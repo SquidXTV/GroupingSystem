@@ -1,0 +1,7 @@
+name: GroupingSystem
+main: me.squidxtv.groupingsystem.GroupingSystem
+version: 1.0.0
+description: todo
+author: SquidXTV
+prefix: GS
+api-version: '1.20'

@@ -1,0 +1,6 @@
+ticks-per-group-update: 100
+
+db:
+  url: <url>
+  username: <username>
+  password: <password>
