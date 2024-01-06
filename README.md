@@ -1,7 +1,7 @@
 # ToDo:
 1. [X] Editable Language files
 2. [X] Show prefix on join and message
-3. [ ] Scoreboard of group
+3. [X] Scoreboard of group
 4. [ ] Tablist of group
 5. [ ] Bukkit Permission
 6. [ ] set-role command
