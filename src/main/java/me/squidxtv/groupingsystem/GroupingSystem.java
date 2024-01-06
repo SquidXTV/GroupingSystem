@@ -7,6 +7,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import me.squidxtv.groupingsystem.commands.GroupCommand;
 import me.squidxtv.groupingsystem.listener.PlayerJoinListener;
 import me.squidxtv.groupingsystem.listener.PlayerMessageEvent;
+import me.squidxtv.groupingsystem.scoreboard.GroupScoreboards;
 import me.squidxtv.groupingsystem.storage.DatabaseStorage;
 import me.squidxtv.groupingsystem.storage.dao.GroupDao;
 import me.squidxtv.groupingsystem.storage.dao.GroupMemberDao;
@@ -15,6 +16,7 @@ import me.squidxtv.groupingsystem.storage.model.GroupMember;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationRegistry;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -34,6 +36,7 @@ import java.util.logging.Logger;
 public class GroupingSystem extends JavaPlugin {
 
     private DatabaseStorage storage;
+    private final GroupScoreboards scoreboards = new GroupScoreboards();
 
     @Override
     public void onEnable() {
@@ -93,26 +96,27 @@ public class GroupingSystem extends JavaPlugin {
             });
             return groups.stream().map(Group::getPrefix).toList();
         });
-        commandManager.registerCommand(new GroupCommand(storage));
+        commandManager.registerCommand(new GroupCommand(storage, scoreboards));
     }
 
     private void initEvents(int ticksPerGroupUpdate) {
         PluginManager pluginManager = getServer().getPluginManager();
-        pluginManager.registerEvents(new PlayerJoinListener(storage), this);
+        pluginManager.registerEvents(new PlayerJoinListener(storage, scoreboards), this);
         pluginManager.registerEvents(new PlayerMessageEvent(storage), this);
 
         getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> storage.useUncheckedConnectionSource(source -> {
             GroupMemberDao memberDao = DaoManager.createDao(source, GroupMember.class);
             List<GroupMember> members = memberDao.queryBuilder().where().isNotNull("expiration").query();
             Timestamp now = new Timestamp(System.currentTimeMillis());
+            List<GroupMember> expired = members.stream().filter(member -> member.getExpirationDate().before(now)).toList();
 
-            for (GroupMember member : members) {
-                Timestamp expirationDate = member.getExpirationDate();
-                if (expirationDate.before(now)) {
-                    member.setGroup(null);
-                    member.setExpirationDate(null);
-                    memberDao.update(member);
-                }
+            expired.stream().map(GroupMember::getUuid)
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .forEach(player -> player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard()));
+
+            for (GroupMember member : expired) {
+                memberDao.delete(member);
             }
         }), 0, ticksPerGroupUpdate);
     }

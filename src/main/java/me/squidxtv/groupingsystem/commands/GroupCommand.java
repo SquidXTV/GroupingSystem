@@ -3,6 +3,7 @@ package me.squidxtv.groupingsystem.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import com.j256.ormlite.dao.DaoManager;
+import me.squidxtv.groupingsystem.scoreboard.GroupScoreboards;
 import me.squidxtv.groupingsystem.storage.DatabaseStorage;
 import me.squidxtv.groupingsystem.storage.dao.GroupDao;
 import me.squidxtv.groupingsystem.storage.dao.GroupMemberDao;
@@ -13,18 +14,22 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Objects;
 
 @CommandAlias("group|g")
 @SuppressWarnings("unused")
 public class GroupCommand extends BaseCommand {
 
     private final DatabaseStorage storage;
+    private final GroupScoreboards scoreboards;
 
-    public GroupCommand(DatabaseStorage storage) {
+    public GroupCommand(DatabaseStorage storage, GroupScoreboards scoreboards) {
         this.storage = storage;
+        this.scoreboards = scoreboards;
     }
 
     @Default
@@ -88,6 +93,7 @@ public class GroupCommand extends BaseCommand {
             Component success = Component.translatable("leave.success", NamedTextColor.GREEN)
                     .arguments(Component.text(group.getName()), Component.text(group.getPrefix()));
             player.sendMessage(success);
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
         });
     }
 
@@ -138,6 +144,8 @@ public class GroupCommand extends BaseCommand {
             member.setRole(GroupMember.Role.ADMIN);
 
             memberDao.create(member);
+
+            player.setScoreboard(scoreboards.get(group));
 
             Component success = Component.translatable("create.success", NamedTextColor.GREEN)
                     .arguments(Component.text(group.getName()), Component.text(group.getPrefix()));
@@ -195,6 +203,8 @@ public class GroupCommand extends BaseCommand {
             member.setRole(GroupMember.Role.MEMBER);
 
             memberDao.create(member);
+
+            player.setScoreboard(scoreboards.get(group));
 
             Component success = Component.translatable("join.success", NamedTextColor.GREEN)
                     .arguments(Component.text(group.getName()), Component.text(group.getPrefix()));
@@ -261,6 +271,8 @@ public class GroupCommand extends BaseCommand {
                 GroupMember member = new GroupMember(target.getUniqueId(), group, timespan.toFutureTimestamp(), GroupMember.Role.MEMBER);
                 memberDao.create(member);
 
+                target.setScoreboard(scoreboards.get(group));
+
                 Component success = Component.translatable("accept.success", NamedTextColor.GREEN)
                         .arguments(Component.text(group.getName()), Component.text(group.getPrefix()));
                 target.sendMessage(success);
@@ -312,6 +324,8 @@ public class GroupCommand extends BaseCommand {
             if (target.isOnline()) {
                 Component alert = Component.translatable("kick.alert-target", NamedTextColor.RED)
                         .arguments(Component.text(player.getName()));
+
+                target.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
                 target.sendMessage(alert);
             }
 
@@ -388,6 +402,8 @@ public class GroupCommand extends BaseCommand {
             group.setName(name);
             groupDao.update(group);
 
+            scoreboards.update(group);
+
             Component success = Component.translatable("set-name.success", NamedTextColor.GREEN)
                     .arguments(Component.text(group.getName()));
             player.sendMessage(success);
@@ -428,6 +444,8 @@ public class GroupCommand extends BaseCommand {
             group.setPrefix(prefix);
             groupDao.update(group);
 
+            scoreboards.update(group);
+
             Component success = Component.translatable("set-prefix.success", NamedTextColor.GREEN)
                     .arguments(Component.text(group.getPrefix()));
             player.sendMessage(success);
@@ -458,8 +476,18 @@ public class GroupCommand extends BaseCommand {
 
             Group group = commandUser.getGroup();
             List<GroupMember> byGroup = memberDao.findByGroup(group);
+            byGroup.stream().map(GroupMember::getUuid)
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .filter(Player::isOnline)
+                    .forEach(member -> {
+                        Component deleted = Component.translatable("group.deleted");
+                        member.sendMessage(deleted);
+                        member.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+                    });
             memberDao.delete(byGroup);
 
+            scoreboards.remove(group);
             groupDao.delete(group);
 
             Component success = Component.translatable("delete.success", NamedTextColor.GREEN);

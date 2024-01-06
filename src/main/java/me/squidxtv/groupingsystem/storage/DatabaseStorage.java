@@ -27,10 +27,20 @@ public final class DatabaseStorage {
         this.logger = logger;
         this.source = source;
         this.jdbcUrl = jdbcUrl;
+
         // throws exception: https://github.com/j256/ormlite-core/issues/20
-        useUncheckedConnectionSource(s -> {
-            TableUtils.createTableIfNotExists(s, Group.class);
-            TableUtils.createTableIfNotExists(s, GroupMember.class);
+        useConnectionSource(s -> {
+            try {
+                TableUtils.createTableIfNotExists(s, Group.class);
+            } catch (SQLException e) {
+                logger.log(Level.WARNING, "Group table already exists.");
+            }
+
+            try {
+                TableUtils.createTableIfNotExists(s, GroupMember.class);
+            } catch (SQLException e) {
+                logger.log(Level.WARNING, "Member table already exists.");
+            }
         });
     }
 

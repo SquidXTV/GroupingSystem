@@ -15,8 +15,6 @@ public class GroupMemberDao extends BaseDaoImpl<GroupMember, Long> {
         super(connectionSource, GroupMember.class);
     }
 
-
-
     public List<GroupMember> findByUUID(UUID uuid) throws SQLException {
         return queryForEq("uuid", uuid);
     }

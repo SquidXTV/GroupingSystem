@@ -1,6 +1,7 @@
 package me.squidxtv.groupingsystem.listener;
 
 import com.j256.ormlite.dao.DaoManager;
+import me.squidxtv.groupingsystem.scoreboard.GroupScoreboards;
 import me.squidxtv.groupingsystem.storage.DatabaseStorage;
 import me.squidxtv.groupingsystem.storage.dao.GroupMemberDao;
 import me.squidxtv.groupingsystem.storage.model.GroupMember;
@@ -16,9 +17,11 @@ import java.util.List;
 public class PlayerJoinListener implements Listener {
 
     private final DatabaseStorage storage;
+    private final GroupScoreboards scoreboards;
 
-    public PlayerJoinListener(DatabaseStorage storage) {
+    public PlayerJoinListener(DatabaseStorage storage, GroupScoreboards scoreboards) {
         this.storage = storage;
+        this.scoreboards = scoreboards;
     }
 
     @EventHandler
@@ -36,11 +39,14 @@ public class PlayerJoinListener implements Listener {
             }
 
             GroupMember member = byUUID.getFirst();
+            player.setScoreboard(scoreboards.get(member.getGroup()));
 
             Component response = Component.translatable("player.join-is-in-group", NamedTextColor.YELLOW)
                     .arguments(Component.text(member.getGroup().getPrefix()), Component.text(player.getName()));
             event.joinMessage(response);
         });
     }
+
+
 
 }
